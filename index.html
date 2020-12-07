@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<!--
+Jentacular Gent
+SKI
+
+IMPORTANT IF YOU WANT TO RESTART THE PROGRAM REFRESH THE WEBPAGE DO NOT PRESS THE "Reload" BUTTON BELOW THE PROGRAM
+
+Delag is automatically turned on
+Click the button with the label "Delag" to toggle delag mode
+While on, delag mode reduces the resolution, removes shadows, ambient occlusion, and specular lighting, and reduces the quality of the sky
+-->
+
+<html>
+    <script>
+        function id(i) {
+            return document.getElementById(i);
+        }
+        function ih(i) {
+            return id(i).innerHTML;
+        }
+        function create(t) {
+            return document.createElement(t);
+        }
+    </script>
+    <head>
+        <meta charset="utf-8">
+        <title>SKI (lag, read code)</title>
+        <style>
+            body {
+                padding: 0px;
+                margin: 0px;
+                overflow: hidden;
+            }
+            canvas {
+                position: absolute;
+                top: -1px;
+                left: -1px;
+                border: 1px solid;
+                margin: 0px;
+                padding: 0px;
+            }
+            img {
+                position: absolute;
+                z-index: 1;
+            }
+            #b {
+                z-index: 2;
+            }
+        </style>
+    </head>
+    <body>
+    </body>
+    <script>
+        var DELAG = !true;
+    </script>
+    <script src="https://cdn.jsdelivr.net/gh/JentGent/brekfast/WebGL/ocgl.1.0.6.js"></script>
+    <script src="https://cdn.jsdelivr.net/jquery/3.0.0-alpha1/jquery.min.js"></script>
+
+    <script id="normals.vsh" type="vertex-shader">
+        precision highp float;
+
+        attribute vec3 vertPos;
+        attribute vec3 vertCol;
+        attribute vec3 vertNor;
+        attribute vec3 faceNor;
+
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 norm;
+        varying float zPos;
+
+        uniform float FOV;
+        uniform float yaw;
+        uniform float pitch;
+        uniform vec3 cam;
+        uniform float time;
+
+        const float far = 1000.;
+        const float near = 1.;
+
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+
+        void main() {
+            vec3 vPos = vertPos;
+            vec3 vert = vPos - cam;
+            if(dot(vert, faceNor) >= 0.) {
+                return;
+            }
+            vert = yRotate(yaw, vert);
+            vert = xRotate(pitch, vert);
+            pos = vPos;
+            col = vertCol;
+            norm = vertNor;
+            float z = vert.z * FOV;
+            float zLine = (vert.z - near) / (far - near);
+            zPos = zLine;
+            gl_Position = vec4(vert.xy, zLine, 1. * z);
+        }
+    </script>
+    <script id="normals.fsh" type="fragment-shader">
+        precision highp float;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 norm;
+        varying float zPos;
+        
+        uniform sampler2D texture;
+        uniform vec3 cam;
+        uniform vec3 sun;
+        uniform sampler2D shadowMap;
+        uniform vec3 shadowCam;
+        uniform float shadowYaw;
+        uniform float shadowPitch;
+        uniform float yaw;
+        uniform float pitch;
+        uniform vec3 shadowDimensions;
+        
+        float map(float a, float b, float c, float d, float e) {
+            return d + (a - b) / (c - b) * (e - d);
+        }
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            if(zPos < 0. || zPos > 1.) {
+                discard;
+            }
+            vec3 nor = normalize(norm);
+            float shade = dot(nor, -sun);
+
+            gl_FragColor = vec4(nor.x / 2. + 0.5, nor.y / 2. + 0.5, nor.z / 2. + 0.5, (length(pos - cam) - 1.) / (500. - 1.));
+        }
+    </script>
+    <script id="color.vsh" type="vertex-shader">
+        precision highp float;
+        
+        attribute vec3 vertPos;
+        attribute vec3 vertCol;
+        attribute vec3 vertNor;
+        attribute vec3 faceNor;
+        attribute float vertSpec;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 norm;
+        varying float spec;
+        
+        uniform float FOV;
+        uniform float yaw;
+        uniform float pitch;
+        uniform vec3 cam;
+        uniform float time;
+        
+        const float far = 1000.;
+        const float near = 500.;
+        
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            vec3 vPos = vertPos;
+            vec3 vert = vPos - cam;
+            if(dot(vert, faceNor) >= 0.) {
+                return;
+            }
+            vert = yRotate(yaw, vert);
+            vert = xRotate(pitch, vert);
+            pos = vPos;
+            col = vertCol;
+            norm = vertNor;
+            spec = vertSpec;
+            float z = vert.z * FOV;
+            float zLine = (vert.z - near) / (far - near);
+            gl_Position = vec4(vert.xy, zLine, 1. * z);
+        }
+    </script>
+    <script id="color.fsh" type="fragment-shader">
+        precision highp float;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 norm;
+        varying float spec;
+        
+        uniform vec3 cam;
+        uniform vec3 sun;
+        uniform vec2 res;
+        uniform sampler2D shadowMap;
+        uniform sampler2D normalMap;
+        uniform sampler2D skyTexture;
+        uniform vec3 shadowCam;
+        uniform float shadowYaw;
+        uniform float shadowPitch;
+        uniform float yaw;
+        uniform float pitch;
+        uniform vec3 shadowDimensions;
+        uniform vec4 ambient;
+        uniform float FOV;
+        uniform float fog_min;
+        uniform float fog_max;
+        
+        float map(float a, float b, float c, float d, float e) {
+            return d + (a - b) / (c - b) * (e - d);
+        }
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            vec3 nor = normalize(norm);
+            if(length(pos - cam) < fog_max) {
+                float shade = clamp(dot(nor, -sun), 0., 1.);
+                
+                bool inShadow = false;
+                vec3 shadowCoords = xRotate(shadowPitch, yRotate(shadowYaw, pos - shadowCam));
+                vec2 imgCoords = vec2(map(shadowCoords.x, -shadowDimensions.x / 2., shadowDimensions.x / 2., 0., 1.), map(shadowCoords.y, -shadowDimensions.y / 2., shadowDimensions.y / 2., 0., 1.));
+                // vec4 s = texture2D(shadowMap, imgCoords);
+                // if(s.a >= 1. && shadowCoords.z / shadowDimensions.z > s.r + 0.005) {
+                //     if(shade <= ambient.w || imgCoords.x < 0. || imgCoords.x > 1. || imgCoords.y < 0. || imgCoords.y > 1.) {
+
+                //     }
+                //     else {
+                //         shade = ambient.w;
+                //     }
+                //     inShadow = true;
+                // }
+                if(shade > ambient.w) {
+                    float shadow = 0.;
+                    float shadowIterations = 0.;
+                    for(float i = 0.; i < 3.14159265358979323 * 2.; i += 0.5) {
+                        for(float r = 0.002; r < 0.01; r += 0.002) {
+                            vec4 s = texture2D(shadowMap, imgCoords + vec2(cos(i) * r, sin(i) * r));
+                            if(s.a >= 1. && shadowCoords.z / shadowDimensions.z > s.r + 0.005) {
+                                if(imgCoords.x < 0. || imgCoords.x > 1. || imgCoords.y < 0. || imgCoords.y > 1.) {
+
+                                }
+                                else {
+                                    shadow += ambient.w;
+                                }
+                                inShadow = true;
+                            }
+                            else {
+                                shadow += 1.;
+                            }
+                            shadowIterations += 1.;
+                        }
+                    }
+                    shadow /= shadowIterations;
+                    shade = min(shade, shadow);
+                }
+                
+                float ambientOcclusion = 1.;
+                vec4 n = texture2D(normalMap, gl_FragCoord.xy / res);
+                if(n.a != 0.) {
+                    ambientOcclusion = 0.;
+                    float ambientOcclusionIterations = 0.;
+                    for(float i = 0.; i < 3.14159265358979323 * 2.; i += 0.5) {
+                        for(float r = 0.002; r < 0.03; r += 0.003) {
+                            vec4 b = texture2D(normalMap, gl_FragCoord.xy / res + vec2(cos(i) * r / n.a, sin(i) * r / n.a));
+                            if(b.a == 0.) {
+                                continue;
+                            }
+                            if(abs(b.a - n.a) > 0.02) {
+                                continue;
+                            }
+                            float d = clamp(dot(b.xyz * 2. - vec3(1), n.xyz * 2. - vec3(1)), 0., 1.);
+                            ambientOcclusion += map(d, 0., 1., 0.5, 1.);
+                            ambientOcclusionIterations += 1.;
+                        }
+                    }
+                    if(ambientOcclusionIterations == 0.) {
+                        ambientOcclusionIterations = 1.;
+                        ambientOcclusion = 1.;
+                    }
+                    ambientOcclusion /= ambientOcclusionIterations;
+                }
+                
+                float specular = 0.;
+                vec3 incidenceRay = normalize(vec3((gl_FragCoord.xy / res * 2. - vec2(1)) * FOV, 1));
+                incidenceRay = yRotate(-yaw, xRotate(-pitch, incidenceRay));
+                vec3 reflectionRay = incidenceRay - nor * dot(incidenceRay, nor) * 2.;
+                if(shade > ambient.w) {
+                    specular = clamp(pow(clamp(dot(reflectionRay, -sun), 0., 1.), spec), 0., 1.) * map(shade, ambient.w, 1., 0., 1.);
+                }
+                
+                shade = max(shade, ambient.w);
+                vec3 color = col;
+                vec3 final = ((color * shade) + ambient.rgb * (1. - shade) * ambient.w) * ambientOcclusion;
+                vec4 sky = texture2D(skyTexture, gl_FragCoord.xy / res);
+                float fog = clamp(map(length(pos - cam), fog_min, fog_max, 0., 1.), 0., 1.);
+                gl_FragColor = vec4(((1. - specular) * final + specular) * (1. - fog) + sky.xyz * fog, 1);
+            }
+        }
+    </script>
+    <script id="color-delag.vsh" type="vertex-shader">
+        precision highp float;
+        
+        attribute vec3 vertPos;
+        attribute vec3 vertCol;
+        attribute vec3 vertNor;
+        attribute vec3 faceNor;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 norm;
+        
+        uniform float FOV;
+        uniform float yaw;
+        uniform float pitch;
+        uniform vec3 cam;
+        uniform float time;
+        
+        const float far = 1000.;
+        const float near = 500.;
+        
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            vec3 vPos = vertPos;
+            vec3 vert = vPos - cam;
+            if(dot(vert, faceNor) >= 0.) {
+                return;
+            }
+            vert = yRotate(yaw, vert);
+            vert = xRotate(pitch, vert);
+            pos = vPos;
+            col = vertCol;
+            norm = vertNor;
+            float z = vert.z * FOV;
+            float zLine = (vert.z - near) / (far - near);
+            gl_Position = vec4(vert.xy, zLine, 1. * z);
+        }
+    </script>
+    <script id="color-delag.fsh" type="fragment-shader">
+        precision highp float;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 norm;
+        
+        uniform vec3 cam;
+        uniform vec3 sun;
+        uniform vec2 res;
+        uniform sampler2D skyDelagTexture;
+        uniform float yaw;
+        uniform float pitch;
+        uniform vec4 ambient;
+        uniform float FOV;
+        uniform float fog_min;
+        uniform float fog_max;
+        
+        float map(float a, float b, float c, float d, float e) {
+            return d + (a - b) / (c - b) * (e - d);
+        }
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            vec3 nor = normalize(norm);
+            if(length(pos - cam) < fog_max) {
+                float shade = clamp(dot(nor, -sun), 0., 1.);
+                
+                shade = max(shade, ambient.w);
+                vec3 color = col;
+                vec3 final = (color * shade) + ambient.rgb * (1. - shade) * ambient.w;
+                vec4 sky = texture2D(skyDelagTexture, gl_FragCoord.xy / res);
+                float fog = clamp(map(length(pos - cam), fog_min, fog_max, 0., 1.), 0., 1.);
+                gl_FragColor = vec4(final * (1. - fog) + sky.xyz * fog, 1);
+            }
+        }
+    </script>
+    <script id="shadows.vsh" type="vertex-shader">
+        precision highp float;
+        
+        attribute vec3 vertPos;
+        attribute vec3 vertCol;
+        attribute vec3 vertNor;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 nor;
+        
+        uniform float time;
+        uniform vec3 shadowCam;
+        uniform float shadowYaw;
+        uniform float shadowPitch;
+        uniform vec3 shadowDimensions;
+        uniform vec2 res;
+        
+        float map(float a, float b, float c, float d, float e) {
+            return d + (a - b) / (c - b) * (e - d);
+        }
+        
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            vec3 vert = vertPos - shadowCam;
+            vert = yRotate(shadowYaw, vert);
+            vert = xRotate(shadowPitch, vert);
+            pos = vert;
+            col = vertCol;
+            nor = vertNor;
+            float zLine = (vert.z - 0.) / (shadowDimensions.z - 0.);
+            gl_Position = vec4(map(vert.x, -shadowDimensions.x / 2., shadowDimensions.x / 2., -1., 1.), map(vert.y, -shadowDimensions.y / 2., shadowDimensions.x / 2., -1., 1.), zLine, 1);
+        }
+    </script>
+    <script id="shadows.fsh" type="fragment-shader">
+        precision highp float;
+        
+        varying vec3 pos;
+        varying vec3 col;
+        varying vec3 nor;
+        
+        uniform sampler2D texture;
+        uniform vec3 cam;
+        uniform vec3 sun;
+        uniform vec3 shadowCam;
+        uniform float time;
+        uniform float shadowYaw;
+        uniform float shadowPitch;
+        uniform vec3 shadowDimensions;
+        
+        float map(float a, float b, float c, float d, float e) {
+            return d + (a - b) / (c - b) * (e - d);
+        }
+        
+        void main() {
+            if(pos.z <= 0.) {
+                discard;
+            }
+            gl_FragColor = vec4(pos.z / shadowDimensions.z, 0, 0, 1);
+        }
+    </script>
+    <script id="sky.vsh" type="vertex-shader">
+        precision highp float;
+        
+        attribute vec2 vertPos;
+        
+        void main() {
+            gl_Position = vec4(vertPos.xy, 0, 1);
+        }
+    </script>
+    <script id="sky.fsh" type="fragment-shader">
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+        
+        uniform float time;
+        uniform vec2 res;
+        uniform vec3 sun;
+        uniform vec3 cam;
+        uniform float yaw;
+        uniform float pitch;
+        uniform float FOV;
+        
+        float map(float v, float v1, float v2, float v3, float v4) {
+            return v3 + (v - v1) / (v2 - v1) * (v4 - v3);
+        }
+        
+        vec3 xRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x, pos.y * c - pos.z * s, pos.z * c + pos.y * s);
+        }
+        vec3 yRotate(float theta, vec3 pos) {
+            float s = sin(theta);
+            float c = cos(theta);
+            return vec3(pos.x * c + pos.z * s, pos.y, pos.z * c - pos.x * s);
+        }
+        
+        void main() {
+            vec3 dir = vec3(map(gl_FragCoord.x, 0., res.x, -FOV, FOV), map(gl_FragCoord.y, 0., res.y, -FOV, FOV), 1.);
+            dir = normalize(dir);
+            dir = xRotate(-pitch, dir);
+            dir = yRotate(-yaw, dir);
+            
+            gl_FragColor = vec4(vec3(0, map(clamp(dir.y, -0.3, 0.8), -0.3, 0.8, 0.9, 0.8), 1), 1);
+            if(dot(dir, -sun) > 0.995) {
+                gl_FragColor = vec4(1);
+            }
+        }
+    </script>
+    <script id="sky-delag.vsh" type="vertex-shader">
+        precision highp float;
+        
+        attribute vec2 vertPos;
+        
+        void main() {
+            gl_Position = vec4(vertPos.xy, 0, 1);
+        }
+    </script>
+    <script id="sky-delag.fsh" type="fragment-shader">
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+        
+        void main() {
+            gl_FragColor = vec4(0.85, 0.85, 0.85, 1);
+        }
+    </script>
+    
+    <script src="vector.js" type="application/javascript"></script>
+    <script src="math.js" type="application/javascript"></script>
+    <script src="rotate.js" type="application/javascript"></script>
+    <script src="setup.js" type="application/javascript"></script>
+    <script src="logic.js" type="application/javascript"></script>
+    <script src="render.js" type="application/javascript"></script>
+    <script id="run.js" type="application/javascript">
+        window.performance = window.performance || {};
+        performance.now = (function() {
+            return performance.now ||
+                performance.mozNow ||
+                performance.msNow ||
+                performance.oNow ||
+                performance.webkitNow ||
+                Date.now;
+        })();
+        var pm = performance.now(), frameRate = performance.now() - pm;
+        function logicLoop() {
+            setTimeout(logicLoop, 1000 / FPS);
+            frameRate = 1000 / (performance.now() - pm);
+            pm = performance.now();
+            update();
+            frameCount += 1;
+        }
+        logicLoop();
+        function run() {
+            requestAnimationFrame(run);
+            draw();
+            drawUI();
+        }
+        // run();
+        requestAnimationFrame(run);
+    </script> <!--run.js-->
+</html>
