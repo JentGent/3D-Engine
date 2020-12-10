@@ -1,16 +1,10 @@
 <!DOCTYPE html>
 <!--
 Jentacular Gent
-SKI
-
-IMPORTANT IF YOU WANT TO RESTART THE PROGRAM REFRESH THE WEBPAGE DO NOT PRESS THE "Reload" BUTTON BELOW THE PROGRAM
-
-Delag is automatically turned on
-Click the button with the label "Delag" to toggle delag mode
-While on, delag mode reduces the resolution, removes shadows, ambient occlusion, and specular lighting, and reduces the quality of the sky
+3D Engine
 -->
 
-<html>
+<html oncontextmenu="return false;">
     <script>
         function id(i) {
             return document.getElementById(i);
@@ -24,7 +18,7 @@ While on, delag mode reduces the resolution, removes shadows, ambient occlusion,
     </script>
     <head>
         <meta charset="utf-8">
-        <title>SKI (lag, read code)</title>
+        <title>3D Engine</title>
         <style>
             body {
                 padding: 0px;
@@ -244,33 +238,28 @@ While on, delag mode reduces the resolution, removes shadows, ambient occlusion,
             if(length(pos - cam) < fog_max) {
                 float shade = clamp(dot(nor, -sun), 0., 1.);
                 
-                bool inShadow = false;
                 vec3 shadowCoords = xRotate(shadowPitch, yRotate(shadowYaw, pos - shadowCam));
                 vec2 imgCoords = vec2(map(shadowCoords.x, -shadowDimensions.x / 2., shadowDimensions.x / 2., 0., 1.), map(shadowCoords.y, -shadowDimensions.y / 2., shadowDimensions.y / 2., 0., 1.));
-                // vec4 s = texture2D(shadowMap, imgCoords);
-                // if(s.a >= 1. && shadowCoords.z / shadowDimensions.z > s.r + 0.005) {
-                //     if(shade <= ambient.w || imgCoords.x < 0. || imgCoords.x > 1. || imgCoords.y < 0. || imgCoords.y > 1.) {
-
-                //     }
-                //     else {
-                //         shade = ambient.w;
-                //     }
-                //     inShadow = true;
-                // }
                 if(shade > ambient.w) {
+                    // vec4 s = texture2D(shadowMap, imgCoords);
+                    // if(s.a >= 1. && shadowCoords.z / shadowDimensions.z > s.r + 0.005) {
+                    //     if(shade > ambient.w && imgCoords.x > 0. && imgCoords.x < 1. && imgCoords.y > 0. && imgCoords.y < 1.) {
+                    //         shade = ambient.w;
+                    //     }
+                    // }
                     float shadow = 0.;
                     float shadowIterations = 0.;
-                    for(float i = 0.; i < 3.14159265358979323 * 2.; i += 0.5) {
+                    for(float i = 0.; i < 3.14159265358979323 * 2.; i += 0.3) {
                         for(float r = 0.002; r < 0.01; r += 0.002) {
-                            vec4 s = texture2D(shadowMap, imgCoords + vec2(cos(i) * r, sin(i) * r));
-                            if(s.a >= 1. && shadowCoords.z / shadowDimensions.z > s.r + 0.005) {
-                                if(imgCoords.x < 0. || imgCoords.x > 1. || imgCoords.y < 0. || imgCoords.y > 1.) {
-
+                            float cs = cos(i) * r, ss = sin(i) * r;
+                            vec4 S = texture2D(shadowMap, imgCoords + vec2(cs, ss));
+                            if(S.a >= 1. && shadowCoords.z / shadowDimensions.z > S.r + 0.005) {
+                                if(imgCoords.x + cs < 0. || imgCoords.x + cs > 1. || imgCoords.y + ss < 0. || imgCoords.y + ss > 1.) {
+                                    shadow += 1.;
                                 }
                                 else {
                                     shadow += ambient.w;
                                 }
-                                inShadow = true;
                             }
                             else {
                                 shadow += 1.;
@@ -288,7 +277,7 @@ While on, delag mode reduces the resolution, removes shadows, ambient occlusion,
                     ambientOcclusion = 0.;
                     float ambientOcclusionIterations = 0.;
                     for(float i = 0.; i < 3.14159265358979323 * 2.; i += 0.5) {
-                        for(float r = 0.002; r < 0.03; r += 0.003) {
+                        for(float r = 0.001; r < 0.01; r += 0.002) {
                             vec4 b = texture2D(normalMap, gl_FragCoord.xy / res + vec2(cos(i) * r / n.a, sin(i) * r / n.a));
                             if(b.a == 0.) {
                                 continue;
@@ -318,7 +307,7 @@ While on, delag mode reduces the resolution, removes shadows, ambient occlusion,
                 
                 shade = max(shade, ambient.w);
                 vec3 color = col;
-                vec3 final = ((color * shade) + ambient.rgb * (1. - shade) * ambient.w) * ambientOcclusion;
+                vec3 final = (color * shade + ambient.rgb * (1. - shade) * ambient.w) * ambientOcclusion;
                 vec4 sky = texture2D(skyTexture, gl_FragCoord.xy / res);
                 float fog = clamp(map(length(pos - cam), fog_min, fog_max, 0., 1.), 0., 1.);
                 gl_FragColor = vec4(((1. - specular) * final + specular) * (1. - fog) + sky.xyz * fog, 1);
