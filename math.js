@@ -1,1 +1,1 @@
-function constrain(a, b, c) { return Math.max(Math.min(a, c), b); }
+function constrain(a, b, c) { return Math.min(Math.max(a, b), c); }
