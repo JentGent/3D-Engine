@@ -18,7 +18,7 @@ vec.prototype.iadd = function(v2) {
         this.x += v2;
         this.y += v2;
         this.z += v2;
-        return;
+        return this;
     }
     this.x += v2.x;
     this.y += v2.y;
@@ -36,7 +36,7 @@ vec.prototype.isub = function(v2) {
         this.x -= v2;
         this.y -= v2;
         this.z -= v2;
-        return;
+        return this;
     }
     this.x -= v2.x;
     this.y -= v2.y;
@@ -54,7 +54,7 @@ vec.prototype.idiv = function(v2) {
         this.x /= v2;
         this.y /= v2;
         this.z /= v2;
-        return;
+        return this;
     }
     this.x /= v2.x;
     this.y /= v2.y;
@@ -72,7 +72,7 @@ vec.prototype.imult = function(v2) {
         this.x *= v2;
         this.y *= v2;
         this.z *= v2;
-        return;
+        return this;
     }
     this.x *= v2.x;
     this.y *= v2.y;
