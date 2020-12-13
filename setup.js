@@ -245,9 +245,7 @@ var ellipsoid = (function() {
             tri(
                 v1, v2, v3,
                 0, n1, n2, n3,
-                v(R, G, B),
-                v(R, G, B),
-                v(R, G, B),
+                v(R, G, B), v(R, G, B), v(R, G, B),
                 s
             )
         }
