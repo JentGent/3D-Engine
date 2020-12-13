@@ -1,3 +1,4 @@
+// Vector
 function vec(x, y, z) {
     this.x = x || 0;
     this.y = !y && y !== 0 ? x : y;
