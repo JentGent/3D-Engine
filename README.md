@@ -1,3 +1,1 @@
-# 3D-Engine
-A 3D engine made with WebGL for JavaScript+HTML.
-index.html is where all the shaders are.
+# This is old; see my [better one](https://github.com/JentGent/pbr-3d)
